@@ -1,0 +1,145 @@
+1. ALICE_WALLET=$(./bitcoin-cli createwallet alice | jq -r '.name')
+2. BOB_WALLET=$(./bitcoin-cli createwallet bob | jq -r '.name')
+3. CAROL_WALLET=$(./bitcoin-cli createwallet carol | jq -r '.name')
+4. CAROL_DESC="tr(tpubDDcu3Pn46F1g6Q96VqQJdzCth7jXFoYhSP8JqfcdQteZjrB518WQ6AELerB6dxBRznrXrgZBnD8oSwsNQeQGZFtNnqut8q96v5G2pi798NV/0/*)"
+5. ALICE_BOB_DESC="tr(musig(tpubDCa8KqX4JjoEsmRdcMqGSJPf82SSNri5nC7qca2SFY5aFAj8XC549tBRhj3DCrw5vsMV2QGRHbf3xMvpnMjMdYTYGYYSEnbrVQkuQyhJ7LE,tpubDC98xjfADSMweQbvBqGgsxmfKdoaX82YJaTye46MswmHPaFEd4T4GfbWEKgfc63bmRWH63X1VoRixqYacje9UidpT7MeL7bYQmiQA3DjYxU)/0/*)"
+6. ./bitcoin-cli getdescriptorinfo "$CAROL_DESC"
+	'''
+	{
+	  "descriptor": "tr(tpubDDcu3Pn46F1g6Q96VqQJdzCth7jXFoYhSP8JqfcdQteZjrB518WQ6AELerB6dxBRznrXrgZBnD8oSwsNQeQGZFtNnqut8q96v5G2pi798NV/0/*)#he74q389",
+	  "checksum": "he74q389",
+	  "isrange": true,
+	  "issolvable": true,
+	  "hasprivatekeys": false
+	}
+	'''
+7. ./bitcoin-cli getdescriptorinfo "$ALICE_BOB_DESC"
+	'''
+	{
+	  "descriptor": "tr(musig(tpubDCa8KqX4JjoEsmRdcMqGSJPf82SSNri5nC7qca2SFY5aFAj8XC549tBRhj3DCrw5vsMV2QGRHbf3xMvpnMjMdYTYGYYSEnbrVQkuQyhJ7LE,tpubDC98xjfADSMweQbvBqGgsxmfKdoaX82YJaTye46MswmHPaFEd4T4GfbWEKgfc63bmRWH63X1VoRixqYacje9UidpT7MeL7bYQmiQA3DjYxU)/0/*)#9uf45wkm",
+	  "checksum": "9uf45wkm",
+	  "isrange": true,
+	  "issolvable": true,
+	  "hasprivatekeys": false
+	}
+	'''
+8. Create combined wallet to import the descriptors COMBINED_WALLET=$(./bitcoin-cli -named createwallet wallet_name="testmusig2" disable_private_keys=true blank=true | jq -r '.name')
+9. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET importdescriptors '[{"desc":"'"$CAROL_DESC"'#he74q389","timestamp":"now"}]'
+10. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET importdescriptors '[{"desc":"'"$ALICE_BOB_DESC"'#9uf45wkm","timestamp":"now"}]'
+11. CAROL_ADDR=$(./bitcoin-cli deriveaddresses "$CAROL_DESC#he74q389" "[0,1]" | jq -r '.[0]')
+12. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET generatetoaddress 101 "$CAROL_ADDR"
+13. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET sendtoaddress "$CAROL_ADDR" 1
+14. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET listunspent
+15. ./bitcoin-cli createpsbt '[{"txid":"20536b0a24ff082933c44780484ea95ebbe1f82aa5340270eb7ab6dccc206e6e","vout":0}]' '[{"bcrt1qt2aesqwwvphehv3jga8ak3qf7lwntk868c55k2":0.9}]'
+16. ./bitcoin-cli descriptorprocesspsbt "cHNidP8BAgQCAAAAAQMEAAAAAAEEAQEBBQEBAfsEAgAAAAABDiBubiDM3LZ663ACNKUq+OG7XqlOSIBHxDMpCP8kCmtTIAEPBAAAAAABEAT9////AAEDCIBKXQUAAAAAAQQWABRau5gBzmBvm7IyR0/bRAn33TXY+gA=" '["'"$CAROL_DESC"'#he74q389","'"$ALICE_BOB_DESC"'#9uf45wkm"]'
+17. ./bitcoin-cli -regtest decodepsbt "cHNidP8BAgQCAAAAAQMEAAAAAAEEAQEBBQEBAfsEAgAAAAABASsA8gUqAQAAACJRICcd55nfuJhKByuDKSI7dk8su4BKN4VC9DZ7Uzw0ji9LIRYFr2u3en/pO9tRqnCszDWew7a3X5kjUco5lsOApYNxaQUA4nVD7iEWS6GUdx3HpJM3e0y6FR2EfsqZfl7ygX32y28jtS9ckdMFAAIjVp0hFkw1uRc5UFsEGtT5wq3guWV6EsvpxeqNx7qwdI9bXdORDQDM41gpAAAAAAAAAAABFyBMNbkXOVBbBBrU+cKt4LllehLL6cXqjce6sHSPW13TkSIaAkIsVjPrvIxM1e7mpmrqDdBQY5sgyZLoJV/mDF6S1VVMQgIFr2u3en/pO9tRqnCszDWew7a3X5kjUco5lsOApYNxaQJLoZR3Hcekkzd7TLoVHYR+ypl+XvKBffbLbyO1L1yR0wEOIG5uIMzctnrrcAI0pSr44bteqU5IgEfEMykI/yQKa1MgAQ8EAAAAAAEQBP3///8AAQMIgEpdBQAAAAABBBYAFFq7mAHOYG+bsjJHT9tECffdNdj6AA=="
+
+	'''
+	{
+	  "global_xpubs": [
+	  ],
+	  "tx_version": 2,
+	  "fallback_locktime": 0,
+	  "input_count": 1,
+	  "output_count": 1,
+	  "psbt_version": 2,
+	  "proprietary": [
+	  ],
+	  "unknown": {
+	  },
+	  "inputs": [
+	    {
+	      "witness_utxo": {
+		"amount": 50.00000000,
+		"scriptPubKey": {
+		  "asm": "1 271de799dfb8984a072b8329223b764f2cbb804a378542f4367b533c348e2f4b",
+		  "desc": "rawtr(271de799dfb8984a072b8329223b764f2cbb804a378542f4367b533c348e2f4b)#u5cf5cw5",
+		  "hex": "5120271de799dfb8984a072b8329223b764f2cbb804a378542f4367b533c348e2f4b",
+		  "address": "bcrt1pyuw70xwlhzvy5petsv5jywmkfukthqz2x7z59apk0dfncdyw9a9s0sepsw",
+		  "type": "witness_v1_taproot"
+		}
+	      },
+	      "previous_txid": "20536b0a24ff082933c44780484ea95ebbe1f82aa5340270eb7ab6dccc206e6e",
+	      "previous_vout": 0,
+	      "sequence": 4294967293,
+	      "taproot_bip32_derivs": [
+		{
+		  "pubkey": "05af6bb77a7fe93bdb51aa70accc359ec3b6b75f992351ca3996c380a5837169",
+		  "master_fingerprint": "e27543ee",
+		  "path": "m",
+		  "leaf_hashes": [
+		  ]
+		},
+		{
+		  "pubkey": "4ba194771dc7a493377b4cba151d847eca997e5ef2817df6cb6f23b52f5c91d3",
+		  "master_fingerprint": "0223569d",
+		  "path": "m",
+		  "leaf_hashes": [
+		  ]
+		},
+		{
+		  "pubkey": "4c35b91739505b041ad4f9c2ade0b9657a12cbe9c5ea8dc7bab0748f5b5dd391",
+		  "master_fingerprint": "cce35829",
+		  "path": "m/0/0",
+		  "leaf_hashes": [
+		  ]
+		}
+	      ],
+	      "taproot_internal_key": "4c35b91739505b041ad4f9c2ade0b9657a12cbe9c5ea8dc7bab0748f5b5dd391",
+	      "musig2_participant_pubkeys": [
+		{
+		  "aggregate_pubkey": "02422c5633ebbc8c4cd5eee6a66aea0dd050639b20c992e8255fe60c5e92d5554c",
+		  "participant_pubkeys": [
+		    "0205af6bb77a7fe93bdb51aa70accc359ec3b6b75f992351ca3996c380a5837169",
+		    "024ba194771dc7a493377b4cba151d847eca997e5ef2817df6cb6f23b52f5c91d3"
+		  ]
+		}
+	      ]
+	    }
+	  ],
+	  "outputs": [
+	    {
+	      "amount": 0.90000000,
+	      "script": {
+		"asm": "0 5abb9801ce606f9bb232474fdb4409f7dd35d8fa",
+		"desc": "addr(bcrt1qt2aesqwwvphehv3jga8ak3qf7lwntk868c55k2)#k8m48969",
+		"hex": "00145abb9801ce606f9bb232474fdb4409f7dd35d8fa",
+		"address": "bcrt1qt2aesqwwvphehv3jga8ak3qf7lwntk868c55k2",
+		"type": "witness_v0_keyhash"
+	      }
+	    }
+	  ],
+	  "fee": 49.10000000
+	}
+	'''
+	
+	
+	
+MULTIPLE HIT
+--------------
+1. ALICE_WALLET=$(./bitcoin-cli createwallet alice | jq -r '.name')
+2. BOB_WALLET=$(./bitcoin-cli createwallet bob | jq -r '.name')
+3. CAROL_WALLET=$(./bitcoin-cli createwallet carol | jq -r '.name')
+4. LEAF_WALLET=$(./bitcoin-cli createwallet leafkeys | jq -r '.name')
+5. LEAF1_ADDR=$(./bitcoin-cli -rpcwallet=$LEAF_WALLET getnewaddress "" legacy)
+6. LEAF2_ADDR=$(./bitcoin-cli -rpcwallet=$LEAF_WALLET getnewaddress "" legacy)
+7. LEAF3_ADDR=$(./bitcoin-cli -rpcwallet=$LEAF_WALLET getnewaddress "" legacy)
+8. LEAF1=$(./bitcoin-cli -rpcwallet=$LEAF_WALLET getaddressinfo "$LEAF1_ADDR" | jq -r '.pubkey')
+9. LEAF2=$(./bitcoin-cli -rpcwallet=$LEAF_WALLET getaddressinfo "$LEAF2_ADDR" | jq -r '.pubkey')
+10. LEAF3=$(./bitcoin-cli -rpcwallet=$LEAF_WALLET getaddressinfo "$LEAF3_ADDR" | jq -r '.pubkey')
+11. ./bitcoin-cli -rpcwallet=$CAROL_WALLET listdescriptors
+12. CAROL_DESC="tr(tpubDCwXwcLsjrohrJvaPFgWCwg3CFYjjLPYS37y3nncwkBEByZGA5k2oZ5WMxa25gUWzatAH6MyRPqQRvKtCH9ocNZAN6aVZ3YqwRYV8GtdsRS/0/*,{pk($LEAF1),{pk($LEAF2),pk($LEAF3)}})"
+13. ./bitcoin-cli -rpcwallet=$ALICE_WALLET listdescriptors
+14. ./bitcoin-cli -rpcwallet=$BOB_WALLET listdescriptors
+15. ALICE_BOB_DESC="tr(musig(tpubDDGn9BSdajDBDZYBWV5AKyMTciHTB9mHFRzL5whQ6S9u7VH3S5UZXJgf5RALx9WRqfa9x8AGj3ZaXnW2rPVAYgSwAF5MjSovhTVuS4rBLGR,tpubDDUK5EG944FBpA7pp1E2CMmTwDHy23oueNYZSad1DcGUvcuUD7tpdNNKKWDjgSxAEjHm6Zgtey3kEHZX6Zqemzdj9BTJYQ9XTDGXGFU3d3U)/0/*)"
+16. ./bitcoin-cli getdescriptorinfo "$CAROL_DESC"
+17. ./bitcoin-cli getdescriptorinfo "$ALICE_BOB_DESC"
+18. COMBINED_WALLET=$(./bitcoin-cli -named createwallet wallet_name="testmusig2" disable_private_keys=true blank=true | jq -r '.name')
+19. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET importdescriptors '[{"desc":"'"$CAROL_DESC"'#mm7m75lj","timestamp":"now"}]'
+20. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET importdescriptors '[{"desc":"'"$ALICE_BOB_DESC"'#z28q2y0f","timestamp":"now"}]'
+21. CAROL_ADDR=$(./bitcoin-cli deriveaddresses "$CAROL_DESC#mm7m75lj" "[0,1]" | jq -r '.[0]')
+22. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET generatetoaddress 101 "$CAROL_ADDR"
+23. ./bitcoin-cli -rpcwallet=$COMBINED_WALLET listunspent
+24. ./bitcoin-cli -rpcwallet=$ALICE_WALLET getnewaddress
+25. ./bitcoin-cli createpsbt '[{"txid":"76639b5b3d8904f6c78aad08d38330b6c5c09b739015b50a34a4bdecf4ed503d","vout":0}]' '[{"bcrt1qg9uanmav93z7xwjv3a2vkthjtmyhr0cm07etsv":0.9}]'
+26. ./bitcoin-cli descriptorprocesspsbt "cHNidP8BAgQCAAAAAQMEAAAAAAEEAQEBBQEBAfsEAgAAAAABDiA9UO307L2kNAq1FZBzm8DFtjCD0witisf2BIk9W5tjdgEPBAAAAAABEAT9////AAEDCIBKXQUAAAAAAQQWABRBednvrCxF4zpMj1TLLvJeyXG/GwA=" '["'"$CAROL_DESC"'#mm7m75lj","'"$ALICE_BOB_DESC"'#z28q2y0f"]'
